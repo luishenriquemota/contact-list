@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  db:
+    container_name: database
+    image: postgres:14
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=luish
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=contact_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U luish -d contact_db"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 5s
+    volumes:
+      - postgres_contact:/var/lib/postgresql/data
+
+  api:
+    container_name: api
+    build: ./back_end
+    ports:
+      - 8000:8000
+    environment:
+      - DB_HOST=db
+      - DB_USER=luish
+      - DB_PASSWORD=1234
+      - DB=contact_db
+    depends_on:
+      db:
+        condition: service_healthy
+    command: bash -c 'yarn migration:run && yarn dev'
+    volumes:
+      - /app/node_modules
+      - ./back_end:/app
+
+  client:
+    container_name: front
+    build: ./front_end
+    ports:
+      - 3000:3000
+    volumes:
+      - /app/node_modules
+      - ./front_end:/app
+
+volumes:
+  postgres_contact:
+    driver: local
